@@ -66,3 +66,15 @@ export const orderItems = pgTable("order_items", {
   quantity: integer("quantity").notNull(),
   priceAtTime: decimal("price_at_time", { precision: 10, scale: 2 }),
 });
+
+export const invoiceStatusEnum = pgEnum("invoice_status", ["paid", "pending", "overdue"]);
+
+export const invoices = pgTable("invoices", {
+  id: serial("id").primaryKey(),
+  invoiceNumber: text("invoice_number").notNull().unique(), // INV-2024-001
+  orderId: integer("order_id").references(() => orders.id),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  status: invoiceStatusEnum("status").default("pending"),
+  dueDate: timestamp("due_date").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});

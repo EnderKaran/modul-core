@@ -3,6 +3,7 @@
 import { trpc } from '@/lib/trpc-client';
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { StockVelocity } from '@/components/dashboard/stock-velocity';
+import { InvoicesTable } from '@/components/dashboard/invoices-table';
 import { Package, Truck, AlertTriangle, Info, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -10,6 +11,7 @@ export default function Home() {
   // tRPC ile veri çekme (Backend router'daki veriler)
   const stats = trpc.getDashboardStats.useQuery();
   const velocity = trpc.getStockVelocity.useQuery();
+  const invoices = trpc.getLatestInvoices.useQuery();
 
   return (
     <div className="max-w-7xl mx-auto space-y-10">
@@ -104,7 +106,9 @@ export default function Home() {
 
       </div>
 
-      {/* Gelecek Adım: Latest Invoices Tablosu Buraya Gelecek */}
+      <div className="mt-8">
+      <InvoicesTable data={invoices.data ?? []} />
+    </div>
     </div>
   );
 }

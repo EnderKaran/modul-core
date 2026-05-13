@@ -1,6 +1,6 @@
 import { router, publicProcedure } from '../trpc';
 import { db } from '@/db';
-import { orders } from '@/db/schema';
+import { invoices, orders } from '@/db/schema';
 import { count, eq, sql } from 'drizzle-orm';
 
 export const appRouter = router({
@@ -27,6 +27,12 @@ export const appRouter = router({
     { month: 'Aug', velocity: 64000 },
     { month: 'Sep', velocity: 89000 },
   ];
+}),
+getLatestInvoices: publicProcedure.query(async () => {
+  return await db.select()
+    .from(invoices)
+    .orderBy(sql`${invoices.createdAt} DESC`)
+    .limit(5);
 }),
 });
 
