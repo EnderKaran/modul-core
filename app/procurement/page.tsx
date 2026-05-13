@@ -31,6 +31,9 @@ export default function ProcurementPage() {
     }
   });
 
+  const vendors = trpc.getVendors.useQuery();
+  const selectedVendorId = form.watch("vendorId");
+
   // 2. TRPC MUTATION (Buraya Yapıştırıldı)
   const mutation = trpc.createProcurement.useMutation({
     onSuccess: () => {
@@ -169,17 +172,77 @@ export default function ProcurementPage() {
                   )}
 
                   {/* STEP 3 & 4 (Placeholder Logic) */}
-                  {currentStep >= 3 && (
-                    <div className="space-y-12 py-10 text-center">
-                      <div className="flex justify-center">
-                        <CheckCircle2 className="w-20 h-20 text-slate-950" />
-                      </div>
-                      <div>
-                        <h2 className="text-3xl font-black uppercase tracking-tightest text-slate-950">Ready for Submission</h2>
-                        <p className="text-slate-500 mt-2 font-medium">Review your data and confirm the industrial procurement request.</p>
-                      </div>
-                    </div>
-                  )}
+                  {currentStep === 3 && (
+  <motion.div 
+    key="step3"
+    initial={{ opacity: 0, x: 20 }}
+    animate={{ opacity: 1, x: 0 }}
+    className="space-y-10"
+  >
+    <div>
+      <h2 className="text-4xl font-black tracking-tightest mb-3 text-slate-950 uppercase">Vendor Selection</h2>
+      <p className="text-slate-600 text-base font-medium">Select a certified supplier from your approved industrial network.</p>
+    </div>
+
+    {/* Vendor Selection Table */}
+    <div className="border-2 border-slate-300 rounded-sm overflow-hidden bg-white shadow-xl">
+      <table className="w-full text-left border-collapse">
+        <thead>
+          <tr className="bg-slate-950 text-white">
+            <th className="p-5 text-[11px] font-black uppercase tracking-[0.2em]">Supplier Name</th>
+            <th className="p-5 text-[11px] font-black uppercase tracking-[0.2em]">Sector</th>
+            <th className="p-5 text-[11px] font-black uppercase tracking-[0.2em]">Location</th>
+            <th className="p-5 text-[11px] font-black uppercase tracking-[0.2em] text-right">Action</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y-2 divide-slate-100">
+          {vendors.isLoading ? (
+            <tr><td colSpan={4} className="p-10 text-center font-bold text-slate-400">Fetching verified vendors...</td></tr>
+          ) : vendors.data?.map((vendor) => (
+            <tr 
+              key={vendor.id} 
+              className={`group hover:bg-slate-50 transition-colors cursor-pointer ${selectedVendorId === vendor.id ? 'bg-slate-50' : ''}`}
+              onClick={() => form.setValue("vendorId", vendor.id)}
+            >
+              <td className="p-6">
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${selectedVendorId === vendor.id ? 'bg-slate-950' : 'bg-transparent border border-slate-300'}`} />
+                  <span className="text-sm font-black text-slate-950 uppercase">{vendor.name}</span>
+                </div>
+              </td>
+              <td className="p-6 text-xs font-bold text-slate-600 uppercase tracking-tight">{vendor.sector}</td>
+              <td className="p-6 text-xs font-bold text-slate-600 uppercase tracking-tight">{vendor.location}</td>
+              <td className="p-6 text-right">
+                <button 
+                  type="button"
+                  className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all ${
+                    selectedVendorId === vendor.id 
+                    ? 'bg-slate-950 text-white border-slate-950' 
+                    : 'bg-white text-slate-400 border-slate-200 group-hover:border-slate-950 group-hover:text-slate-950'
+                  }`}
+                >
+                  {selectedVendorId === vendor.id ? 'Selected' : 'Select'}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    {/* Navigation */}
+    <div className="pt-12 border-t-2 border-slate-100 flex justify-between items-center">
+      <button onClick={() => setCurrentStep(2)} className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-950 transition-colors">Back to Logistics</button>
+      <button 
+        disabled={!selectedVendorId}
+        onClick={() => setCurrentStep(4)}
+        className="flex items-center gap-3 bg-slate-950 text-white px-10 py-5 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
+      >
+        Final Review <ChevronRight className="w-5 h-5" />
+      </button>
+    </div>
+  </motion.div>
+)}
 
                   {/* NAVIGATION FOOTER */}
                   <div className="pt-12 border-t-2 border-slate-100 flex justify-between items-center">

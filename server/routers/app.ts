@@ -1,6 +1,6 @@
 import { router, publicProcedure } from '../trpc';
 import { db } from '@/db';
-import { invoices, orders } from '@/db/schema';
+import { invoices, orders, suppliers } from '@/db/schema';
 import { procurementSchema } from "@/lib/validations/procurement";
 import { count, eq, sql } from 'drizzle-orm';
 
@@ -47,6 +47,9 @@ createProcurement: publicProcedure
 
       return newOrder;
     }),
+    getVendors: publicProcedure.query(async () => {
+    return await db.select().from(suppliers).orderBy(suppliers.name);
+  }),
 });
 
 export type AppRouter = typeof appRouter;
