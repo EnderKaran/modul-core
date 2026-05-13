@@ -1,6 +1,7 @@
 import { router, publicProcedure } from '../trpc';
 import { db } from '@/db';
 import { invoices, orders } from '@/db/schema';
+import { procurementSchema } from "@/lib/validations/procurement";
 import { count, eq, sql } from 'drizzle-orm';
 
 export const appRouter = router({
@@ -34,6 +35,18 @@ getLatestInvoices: publicProcedure.query(async () => {
     .orderBy(sql`${invoices.createdAt} DESC`)
     .limit(5);
 }),
+createProcurement: publicProcedure
+    .input(procurementSchema) // Zod ile gelen veriyi doğrula
+    .mutation(async ({ input }) => {
+      // 1. Siparişi 'orders' tablosuna ekle
+      const [newOrder] = await db.insert(orders).values({
+        orderNumber: `PRQ-${Math.floor(1000 + Math.random() * 9000)}`,
+        status: "approved", // Dinamik olması için onaylı başlıyoruz
+        totalAmount: (input.quantity * 150).toString(), // Örnek fiyatlandırma
+      }).returning();
+
+      return newOrder;
+    }),
 });
 
 export type AppRouter = typeof appRouter;
