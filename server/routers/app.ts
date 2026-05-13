@@ -15,6 +15,19 @@ export const appRouter = router({
       delayedFreight: delayedFreight[0].value,
     };
   }),
+  getStockVelocity: publicProcedure.query(async () => {
+  return [
+    { month: 'Jan', velocity: 28000 },
+    { month: 'Feb', velocity: 42000 },
+    { month: 'Mar', velocity: 35000 },
+    { month: 'Apr', velocity: 22000 },
+    { month: 'May', velocity: 58000 },
+    { month: 'Jun', velocity: 52000 },
+    { month: 'Jul', velocity: 78000 },
+    { month: 'Aug', velocity: 64000 },
+    { month: 'Sep', velocity: 89000 },
+  ];
+}),
 });
 
 export type AppRouter = typeof appRouter;
