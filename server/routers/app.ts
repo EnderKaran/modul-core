@@ -4,6 +4,7 @@ import { products, orders, suppliers, invoices } from "@/db/schema";
 import { procurementSchema } from "@/lib/validations/procurement";
 import { count, eq, sql } from 'drizzle-orm';
 import * as Ably from 'ably';
+import z from 'zod';
 
 const ably = new Ably.Rest({ key: process.env.ABLY_API_KEY });
 
@@ -63,6 +64,28 @@ createProcurement: publicProcedure
       });
 
       return newOrder;
+    }),
+    addInventoryItem: publicProcedure
+    .input(z.object({
+      sku: z.string().min(1),
+      name: z.string().min(1),
+      category: z.string().min(1),
+      stock: z.number().min(0),
+      unit: z.string(),
+      safetyStock: z.number().min(0),
+      location: z.string().min(1),
+    }))
+    .mutation(async ({ input }) => {
+      await db.insert(products).values({
+        sku: input.sku,
+        name: input.name,
+        category: input.category,
+        stock: input.stock,
+        unit: input.unit,
+        safetyStock: input.safetyStock,
+        location: input.location,
+      });
+      return { success: true };
     }),
 });
 
