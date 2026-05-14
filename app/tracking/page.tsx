@@ -28,22 +28,22 @@ export default function TrackingPage() {
   const onRouteCount = activeFreights.filter(f => f.status === 'shipped').length;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-10 pb-12 pt-8">
+    <div className="max-w-7xl mx-auto space-y-6 md:space-y-10 pb-12 pt-6 md:pt-8 px-4 lg:px-0">
       
-      {/* BAŞLIK */}
-      <div className="flex justify-between items-end">
+      {/* BAŞLIK VE GPS DURUMU (Responsive Flex) */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 md:gap-0">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-2">
-          <h2 className="text-4xl font-black tracking-tightest text-slate-950 uppercase">Live Freight Network</h2>
-          <p className="text-slate-600 text-base font-bold">Global logistics tracking and real-time route telemetry.</p>
+          <h2 className="text-3xl md:text-4xl font-black tracking-tightest text-slate-950 uppercase">Live Freight Network</h2>
+          <p className="text-slate-600 text-sm md:text-base font-bold">Global logistics tracking and real-time route telemetry.</p>
         </motion.div>
         
-        <div className="px-6 py-4 bg-slate-950 text-white flex items-center gap-3 shadow-xl">
+        <div className="w-full md:w-auto px-6 py-4 bg-slate-950 text-white flex items-center justify-center md:justify-start gap-3 shadow-xl rounded-sm">
           <Navigation className="w-4 h-4 text-emerald-400 animate-pulse" />
           <span className="text-[11px] font-black uppercase tracking-[0.2em]">GPS Sync Active</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 md:gap-8">
         
         {/* SOL PANEL - KONTROL MONİTÖRÜ */}
         <motion.div 
@@ -65,8 +65,8 @@ export default function TrackingPage() {
             </div>
           </div>
 
-          {/* Canlı Kargo Listesi */}
-          <div className="bg-white border-2 border-slate-300 p-6 rounded-sm shadow-xl flex-1 h-[450px] overflow-y-auto">
+          {/* Canlı Kargo Listesi (Mobilde yüksekliği düşürüldü) */}
+          <div className="bg-white border-2 border-slate-300 p-6 rounded-sm shadow-xl flex-1 h-[300px] lg:h-[450px] overflow-y-auto">
             <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4 flex items-center gap-2">
               <Activity className="w-3.5 h-3.5" /> Active Shipments
             </h3>
@@ -89,13 +89,13 @@ export default function TrackingPage() {
           </div>
         </motion.div>
 
-        {/* SAĞ PANEL - DÜNYA HARİTASI (Radar Görünümü) */}
+        {/* SAĞ PANEL - DÜNYA HARİTASI (Radar Görünümü - Mobilde Yüksekliği Düzenlendi) */}
         <motion.div 
           initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
-          className="lg:col-span-3 bg-[#0f172a] rounded-sm shadow-2xl border-4 border-slate-900 relative overflow-hidden flex items-center justify-center min-h-[600px]"
+          className="lg:col-span-3 bg-[#0f172a] rounded-sm shadow-2xl border-4 border-slate-900 relative overflow-hidden flex items-center justify-center min-h-[400px] lg:min-h-[600px]"
         >
           {/* Arkaplan Radar Grid Süslemesi */}
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:60px_60px] opacity-30" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:40px_40px] md:bg-[size:60px_60px] opacity-30" />
           
           <ComposableMap
             projection="geoMercator"
@@ -154,9 +154,9 @@ export default function TrackingPage() {
             {/* HEDEF NOKTASI (Ana Depo - Merkez) */}
             <Marker coordinates={DESTINATION}>
               <g transform="translate(-12, -24)">
-                <ShieldCheck className="w-6 h-6 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+                <ShieldCheck className="w-5 h-5 md:w-6 md:h-6 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
               </g>
-              <circle r={4} fill="#ffffff" />
+              <circle r={3} fill="#ffffff" />
             </Marker>
 
           </ComposableMap>

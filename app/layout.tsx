@@ -5,6 +5,9 @@ import { TRPCProvider } from "@/components/providers/trpc-provider";
 import { TelemetryProvider } from "@/components/providers/ably-provider";
 import { Sidebar } from "@/components/sidebar";
 
+// YENİ: Arama Çubuğu Bileşenini İçeri Aktar
+import { TopSearchBar } from "@/components/top-search-bar";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -42,21 +45,22 @@ export default function RootLayout({
             {/* Sağ Panel: Üst Bar ve Ana İçerik */}
             <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-slate-50">
               
-              {/* İsteğe bağlı: Üst Bar (Search & User info) */}
-              <header className="h-14 border-b border-slate-200 bg-white flex items-center justify-between px-8">
-                <div className="text-xs font-medium text-slate-500 uppercase tracking-widest">
+              {/* Üst Bar (Search & User info) */}
+              <header className="h-16 md:h-14 border-b-2 border-slate-200 bg-white flex items-center justify-between px-4 md:px-8">
+                <div className="hidden md:block text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">
                   Supply Chain Intelligence
                 </div>
-                <div className="flex items-center gap-4">
+                
+                <div className="flex items-center gap-4 w-full md:w-auto">
                  
-                  <div className="h-8 w-64 bg-slate-100 rounded-sm border border-slate-200 px-3 flex items-center text-xs text-slate-400">
-                    Search orders, invoices...
-                  </div>
+                 {/* YENİ: Dinamik Command Palette (Arama Çubuğu) */}
+                 <TopSearchBar />
+                 
                 </div>
               </header>
 
               {/* Dinamik İçerik Alanı */}
-              <main className="flex-1 overflow-y-auto p-8">
+              <main className="flex-1 overflow-y-auto p-4 md:p-8 relative">
                 {children}
               </main>
             </div>

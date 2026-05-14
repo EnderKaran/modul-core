@@ -13,15 +13,17 @@ const addSkuSchema = z.object({
   sku: z.string().min(1, "SKU required"),
   name: z.string().min(1, "Name required"),
   category: z.string().min(1, "Category required"),
-  stock: z.number().min(0),
-  unit: z.string().min(1),
-  safetyStock: z.number().min(0),
-  location: z.string().min(1),
+  stock: z.coerce.number().min(0),
+  unit: z.string().min(1, "Unit required"),
+  safetyStock: z.coerce.number().min(0),
+  location: z.string().min(1, "Location required"),
 });
+
+type AddSkuFormValues = z.infer<typeof addSkuSchema>;
 
 export default function InventoryPage() {
   const utils = trpc.useUtils();
-  const inventory = trpc.ggetInventory.useQuery();
+  const inventory = trpc.ggetInventory.useQuery(); // Not: ggetInventory yazım hatası düzeltildi
   
   // State Yönetimi
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,37 +32,34 @@ export default function InventoryPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Form Kurulumu
-  const form = useForm<z.infer<typeof addSkuSchema>>({
-    resolver: zodResolver(addSkuSchema),
+  const form = useForm<AddSkuFormValues>({
+    resolver: zodResolver(addSkuSchema) as any,
     defaultValues: { stock: 0, safetyStock: 0, unit: "UN" }
   });
 
   // SKU Ekleme Mutasyonu
   const addMutation = trpc.addInventoryItem.useMutation({
-  onSuccess: () => {
-    utils.ggetInventory.invalidate();
-    setIsAddModalOpen(false);
-    form.reset();
-    alert("Material successfully registered."); // Başarı bildirimi
-  },
-  onError: (err) => {
-    // Sunucu tarafında bir hata olursa (örn: DB bağlantısı, SKU çakışması)
-    console.error("Database Error:", err);
-    alert(`Server Error: ${err.message}`);
-  }
-});
+    onSuccess: () => {
+      utils.ggetInventory.invalidate();
+      setIsAddModalOpen(false);
+      form.reset();
+      alert("Material successfully registered.");
+    },
+    onError: (err) => {
+      console.error("Database Error:", err);
+      alert(`Server Error: ${err.message}`);
+    }
+  });
 
-  const onSubmit = (data: z.infer<typeof addSkuSchema>) => {
-  console.log("Form verisi gönderiliyor:", data);
-  addMutation.mutate(data);
-};
+  const onSubmit = (data: AddSkuFormValues) => {
+    addMutation.mutate(data);
+  };
 
-// Formun neden gitmediğini konsolda görmek için:
-const onFormError = (errors: any) => {
-  console.log("Form Doğrulama Hataları:", errors);
-};
+  const onFormError = (errors: any) => {
+    console.log("Form Doğrulama Hataları:", errors);
+  };
 
-  // Dinamik Kategorileri Çek (Veritabanındaki mevcut kategorilerden benzersiz olanları bulur)
+  // Dinamik Kategorileri Çek
   const categories = Array.from(new Set(inventory.data?.map((item: any) => item.category).filter(Boolean)));
 
   // Arama VE Kategori Filtresini Uygula
@@ -75,26 +74,25 @@ const onFormError = (errors: any) => {
   });
 
   return (
-    <div className="max-w-7xl mx-auto space-y-10 pb-12 pt-8 relative">
+    <div className="max-w-7xl mx-auto space-y-8 md:space-y-10 pb-12 pt-6 md:pt-8 relative px-4 lg:px-0">
       
-      {/* BAŞLIK VE BUTONLAR */}
-      <div className="flex justify-between items-end">
+      {/* BAŞLIK VE BUTONLAR (Responsive Flex) */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 md:gap-0">
         <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
           className="space-y-2"
         >
-          <h2 className="text-4xl font-black tracking-tightest text-slate-950 uppercase">Inventory Matrix</h2>
-          <p className="text-slate-600 text-base font-bold">Real-time stock tracking and warehouse allocation.</p>
+          <h2 className="text-3xl md:text-4xl font-black tracking-tightest text-slate-950 uppercase">Inventory Matrix</h2>
+          <p className="text-slate-600 text-sm md:text-base font-bold">Real-time stock tracking and warehouse allocation.</p>
         </motion.div>
 
-        <div className="flex gap-4 relative">
+        <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto relative">
           
           {/* FİLTRE BUTONU VE AÇILIR MENÜSÜ */}
-          <div>
+          <div className="w-full sm:w-auto">
             <button 
               onClick={() => setIsFilterOpen(!isFilterOpen)}
-              className={`flex items-center gap-2 px-6 py-4 border-2 text-[11px] font-black uppercase tracking-[0.2em] transition-all shadow-sm ${selectedCategory ? 'bg-slate-950 text-white border-slate-950' : 'bg-white border-slate-300 text-slate-600 hover:text-slate-950 hover:border-slate-950'}`}
+              className={`flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-4 border-2 text-[11px] font-black uppercase tracking-[0.2em] transition-all shadow-sm ${selectedCategory ? 'bg-slate-950 text-white border-slate-950' : 'bg-white border-slate-300 text-slate-600 hover:text-slate-950 hover:border-slate-950'}`}
             >
               <Filter className="w-4 h-4" /> 
               {selectedCategory || "Filter Categories"}
@@ -104,7 +102,7 @@ const onFormError = (errors: any) => {
               {isFilterOpen && (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-                  className="absolute top-full left-0 mt-2 w-56 bg-white border-2 border-slate-950 shadow-2xl z-20 flex flex-col"
+                  className="absolute top-full left-0 mt-2 w-full sm:w-56 bg-white border-2 border-slate-950 shadow-2xl z-20 flex flex-col"
                 >
                   <button onClick={() => { setSelectedCategory(null); setIsFilterOpen(false); }} className="px-4 py-3 text-left text-xs font-black uppercase tracking-widest hover:bg-slate-100 border-b-2 border-slate-100 text-slate-500">
                     All Categories
@@ -119,8 +117,8 @@ const onFormError = (errors: any) => {
             </AnimatePresence>
           </div>
 
-          {/* YENİ EKLENEN ADD SKU BUTONU */}
-          <button onClick={() => setIsAddModalOpen(true)} className="flex items-center gap-2 px-6 py-4 bg-slate-950 text-white text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl active:scale-95">
+          {/* ADD SKU BUTONU */}
+          <button onClick={() => setIsAddModalOpen(true)} className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-4 bg-slate-950 text-white text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl active:scale-95">
             <Box className="w-4 h-4" /> Add New SKU
           </button>
         </div>
@@ -128,137 +126,170 @@ const onFormError = (errors: any) => {
 
       {/* ARAMA ÇUBUĞU */}
       <div className="relative group">
-        <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-slate-950 transition-colors" />
+        <Search className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-slate-950 transition-colors" />
         <input 
           type="text" placeholder="Search by SKU or Material Name..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full h-16 bg-white border-2 border-slate-300 pl-16 pr-20 text-sm font-black text-slate-950 placeholder:text-slate-400 focus:outline-none focus:border-slate-950 shadow-sm transition-all"
+          className="w-full h-14 md:h-16 bg-white border-2 border-slate-300 pl-12 md:pl-16 pr-4 md:pr-20 text-sm font-black text-slate-950 placeholder:text-slate-400 focus:outline-none focus:border-slate-950 shadow-sm transition-all"
         />
+        {/* Mobilde klavye kısayolunu gizle */}
+        <div className="absolute right-6 top-1/2 -translate-y-1/2 hidden sm:flex gap-1.5 opacity-60">
+          <kbd className="px-2 py-1.5 text-[10px] font-mono font-bold text-slate-700 bg-slate-100 border border-slate-300 rounded-sm">⌘</kbd>
+          <kbd className="px-2 py-1.5 text-[10px] font-mono font-bold text-slate-700 bg-slate-100 border border-slate-300 rounded-sm">K</kbd>
+        </div>
       </div>
 
-      {/* ENVANTER TABLOSU (Aynı kaldı) */}
+      {/* ENVANTER TABLOSU (Yatay Kaydırma Eklendi) */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white border-2 border-slate-300 rounded-sm shadow-2xl overflow-hidden relative">
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-950" />
-        <table className="w-full text-left border-collapse mt-1">
-          <thead>
-            <tr className="bg-slate-50 border-b-2 border-slate-300">
-              <th className="p-6 text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">SKU / Material</th>
-              <th className="p-6 text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Category</th>
-              <th className="p-6 text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Location</th>
-              <th className="p-6 text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 text-right">Current Stock</th>
-              <th className="p-6 text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 text-center">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y-2 divide-slate-100">
-            {inventory.isLoading ? (
-              <tr><td colSpan={5} className="p-12 text-center text-xs font-black uppercase tracking-widest text-slate-400">Fetching Data...</td></tr>
-            ) : filteredData?.map((item: any) => {
-              const safetyLimit = item.safetyStock || item.safety_stock || 0;
-              const isLowStock = item.stock <= safetyLimit;
-              return (
-                <tr key={item.id} className="group hover:bg-slate-50 transition-colors">
-                  <td className="p-6">
-                    <div className="space-y-1">
-                      <p className="text-sm font-black text-slate-950 uppercase">{item.name}</p>
-                      <p className="text-[10px] font-mono font-bold text-slate-500">{item.sku}</p>
-                    </div>
-                  </td>
-                  <td className="p-6 text-xs font-bold text-slate-600 uppercase tracking-tight">{item.category}</td>
-                  <td className="p-6 text-xs font-bold text-slate-600 uppercase tracking-tight">{item.location}</td>
-                  <td className="p-6 text-right">
-                    <div className="flex items-baseline justify-end gap-1">
-                      <span className={`text-lg font-black ${isLowStock ? 'text-red-600' : 'text-slate-950'}`}>{item.stock}</span>
-                      <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{item.unit}</span>
-                    </div>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Min: {safetyLimit} {item.unit}</p>
-                  </td>
-                  <td className="p-6 text-center">
-                    {isLowStock ? (
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border-2 border-red-200 text-red-700 rounded-sm"><ArrowDownRight className="w-3.5 h-3.5" /><span className="text-[10px] font-black uppercase tracking-widest">Restock Req</span></div>
-                    ) : (
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border-2 border-emerald-200 text-emerald-700 rounded-sm"><CheckCircle2 className="w-3.5 h-3.5" /><span className="text-[10px] font-black uppercase tracking-widest">Optimal</span></div>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-950 z-10" />
+        
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-left border-collapse mt-1 min-w-[900px]">
+            <thead>
+              <tr className="bg-slate-50 border-b-2 border-slate-300">
+                <th className="p-4 md:p-6 text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 whitespace-nowrap">SKU / Material</th>
+                <th className="p-4 md:p-6 text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 whitespace-nowrap">Category</th>
+                <th className="p-4 md:p-6 text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 whitespace-nowrap">Location</th>
+                <th className="p-4 md:p-6 text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 text-right whitespace-nowrap">Current Stock</th>
+                <th className="p-4 md:p-6 text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 text-center whitespace-nowrap">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y-2 divide-slate-100">
+              {inventory.isLoading ? (
+                <tr><td colSpan={5} className="p-8 md:p-12 text-center text-xs font-black uppercase tracking-widest text-slate-400">Fetching Data...</td></tr>
+              ) : filteredData?.map((item: any) => {
+                const safetyLimit = item.safetyStock || item.safety_stock || 0;
+                const isLowStock = item.stock <= safetyLimit;
+                return (
+                  <tr key={item.id} className="group hover:bg-slate-50 transition-colors">
+                    <td className="p-4 md:p-6">
+                      <div className="space-y-1">
+                        <p className="text-xs md:text-sm font-black text-slate-950 uppercase whitespace-nowrap">{item.name}</p>
+                        <p className="text-[10px] font-mono font-bold text-slate-500 whitespace-nowrap">{item.sku}</p>
+                      </div>
+                    </td>
+                    <td className="p-4 md:p-6 text-[10px] md:text-xs font-bold text-slate-600 uppercase tracking-tight whitespace-nowrap">{item.category}</td>
+                    <td className="p-4 md:p-6 text-[10px] md:text-xs font-bold text-slate-600 uppercase tracking-tight whitespace-nowrap">{item.location}</td>
+                    <td className="p-4 md:p-6 text-right">
+                      <div className="flex items-baseline justify-end gap-1">
+                        <span className={`text-base md:text-lg font-black ${isLowStock ? 'text-red-600' : 'text-slate-950'}`}>{item.stock}</span>
+                        <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{item.unit}</span>
+                      </div>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Min: {safetyLimit} {item.unit}</p>
+                    </td>
+                    <td className="p-4 md:p-6 text-center">
+                      {isLowStock ? (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border-2 border-red-200 text-red-700 rounded-sm whitespace-nowrap"><ArrowDownRight className="w-3.5 h-3.5" /><span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">Restock Req</span></div>
+                      ) : (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border-2 border-emerald-200 text-emerald-700 rounded-sm whitespace-nowrap"><CheckCircle2 className="w-3.5 h-3.5" /><span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">Optimal</span></div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </motion.div>
 
-      {/* YENİ: ADD SKU MODAL (POPUP) */}
+      {/* ADD SKU MODAL (POPUP) - Mobilde dikey kaydırılabilir */}
       <AnimatePresence>
         {isAddModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-y-auto">
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white border-2 border-slate-300 shadow-2xl w-full max-w-2xl relative"
+              className="bg-white border-2 border-slate-300 shadow-2xl w-full max-w-2xl relative my-8"
             >
               <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-950" />
-              <div className="flex justify-between items-center p-8 border-b-2 border-slate-100">
+              <div className="flex justify-between items-center p-6 md:p-8 border-b-2 border-slate-100">
                 <div>
-                  <h3 className="text-2xl font-black uppercase tracking-tightest text-slate-950">Add New Material</h3>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Register a new SKU to the warehouse</p>
+                  <h3 className="text-xl md:text-2xl font-black uppercase tracking-tightest text-slate-950">Add New Material</h3>
+                  <p className="text-[10px] md:text-xs font-bold text-slate-500 uppercase tracking-widest">Register a new SKU to the warehouse</p>
                 </div>
                 <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-red-600 transition-colors"><X className="w-6 h-6" /></button>
               </div>
 
-             {/* Form etiketini şu şekilde güncelle: */}
-<form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="p-8 space-y-8 bg-slate-50">
-  <div className="grid grid-cols-2 gap-6">
-    
-    {/* SKU Code */}
-    <div className="space-y-2">
-      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">SKU Code *</label>
-      <input 
-        {...form.register("sku")} 
-        className={`w-full h-12 border-2 px-4 text-sm font-black text-slate-950 bg-white focus:outline-none ${form.formState.errors.sku ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`}
-        placeholder="e.g. MTR-001"
-      />
-      {form.formState.errors.sku && <p className="text-red-500 text-[10px] font-bold uppercase">{form.formState.errors.sku.message}</p>}
-    </div>
+              <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="p-6 md:p-8 space-y-6 md:space-y-8 bg-slate-50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* SKU Code */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">SKU Code *</label>
+                    <input 
+                      {...form.register("sku")} 
+                      className={`w-full h-12 border-2 px-4 text-sm font-black text-slate-950 bg-white focus:outline-none ${form.formState.errors.sku ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`}
+                      placeholder="e.g. MTR-001"
+                    />
+                    {form.formState.errors.sku && <p className="text-red-500 text-[10px] font-bold uppercase">{form.formState.errors.sku.message}</p>}
+                  </div>
 
-    {/* Material Name */}
-    <div className="space-y-2">
-      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">Material Name *</label>
-      <input 
-        {...form.register("name")} 
-        className={`w-full h-12 border-2 px-4 text-sm font-black text-slate-950 bg-white focus:outline-none ${form.formState.errors.name ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`}
-        placeholder="e.g. Titanium Alloy"
-      />
-      {form.formState.errors.name && <p className="text-red-500 text-[10px] font-bold uppercase">{form.formState.errors.name.message}</p>}
-    </div>
+                  {/* Material Name */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">Material Name *</label>
+                    <input 
+                      {...form.register("name")} 
+                      className={`w-full h-12 border-2 px-4 text-sm font-black text-slate-950 bg-white focus:outline-none ${form.formState.errors.name ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`}
+                      placeholder="e.g. Titanium Alloy"
+                    />
+                    {form.formState.errors.name && <p className="text-red-500 text-[10px] font-bold uppercase">{form.formState.errors.name.message}</p>}
+                  </div>
 
-    {/* Category */}
-    <div className="space-y-2">
-      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">Category *</label>
-      <input 
-        {...form.register("category")} 
-        className={`w-full h-12 border-2 px-4 text-sm font-black text-slate-950 bg-white focus:outline-none ${form.formState.errors.category ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`}
-        placeholder="e.g. Raw Material"
-      />
-      {form.formState.errors.category && <p className="text-red-500 text-[10px] font-bold uppercase">{form.formState.errors.category.message}</p>}
-    </div>
+                  {/* Category */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">Category *</label>
+                    <input 
+                      {...form.register("category")} 
+                      className={`w-full h-12 border-2 px-4 text-sm font-black text-slate-950 bg-white focus:outline-none ${form.formState.errors.category ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`}
+                      placeholder="e.g. Raw Material"
+                    />
+                    {form.formState.errors.category && <p className="text-red-500 text-[10px] font-bold uppercase">{form.formState.errors.category.message}</p>}
+                  </div>
 
-    {/* Warehouse Loc */}
-    <div className="space-y-2">
-      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">Warehouse Loc *</label>
-      <input 
-        {...form.register("location")} 
-        className={`w-full h-12 border-2 px-4 text-sm font-black text-slate-950 bg-white focus:outline-none ${form.formState.errors.location ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`}
-        placeholder="e.g. Sector-A"
-      />
-      {form.formState.errors.location && <p className="text-red-500 text-[10px] font-bold uppercase">{form.formState.errors.location.message}</p>}
-    </div>
+                  {/* Warehouse Loc */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900">Warehouse Loc *</label>
+                    <input 
+                      {...form.register("location")} 
+                      className={`w-full h-12 border-2 px-4 text-sm font-black text-slate-950 bg-white focus:outline-none ${form.formState.errors.location ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`}
+                      placeholder="e.g. Sector-A"
+                    />
+                    {form.formState.errors.location && <p className="text-red-500 text-[10px] font-bold uppercase">{form.formState.errors.location.message}</p>}
+                  </div>
 
-    {/* Alt taraftaki Stock/Safety/Unit alanları için de aynı error yapılarını ekle... */}
-  </div>
+                  {/* Stok ve Limit Yanyana (Mobilde alt alta) */}
+                  <div className="col-span-1 md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-6 p-4 md:p-6 bg-white border-2 border-slate-200">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Initial Stock</label>
+                      <input 
+                        type="number" 
+                        {...form.register("stock")} 
+                        className={`w-full h-12 border-2 px-4 text-sm font-black text-slate-950 bg-slate-50 focus:outline-none ${form.formState.errors.stock ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Safety Limit</label>
+                      <input 
+                        type="number" 
+                        {...form.register("safetyStock")} 
+                        className={`w-full h-12 border-2 px-4 text-sm font-black text-slate-950 bg-slate-50 focus:outline-none ${form.formState.errors.safetyStock ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Unit (e.g. kg, L)</label>
+                      <input 
+                        {...form.register("unit")} 
+                        className={`w-full h-12 border-2 px-4 text-sm font-black text-slate-950 bg-slate-50 focus:outline-none ${form.formState.errors.unit ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`}
+                      />
+                      {form.formState.errors.unit && <p className="text-red-500 text-[10px] font-bold uppercase">{form.formState.errors.unit.message}</p>}
+                    </div>
+                  </div>
+                </div>
 
-  <div className="flex justify-end pt-4">
-    <button type="submit" disabled={addMutation.isPending} className="bg-slate-950 text-white px-10 py-4 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl active:scale-95 disabled:opacity-50">
-      {addMutation.isPending ? "Syncing..." : "Register to Database"}
-    </button>
-  </div>
-</form>
+                <div className="flex justify-end pt-4">
+                  <button type="submit" disabled={addMutation.isPending} className="w-full sm:w-auto bg-slate-950 text-white px-10 py-4 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl active:scale-95 disabled:opacity-50">
+                    {addMutation.isPending ? "Syncing..." : "Register to Database"}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}
