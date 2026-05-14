@@ -67,10 +67,12 @@ export const invoiceStatusEnum = pgEnum("invoice_status", ["paid", "pending", "o
 
 export const invoices = pgTable("invoices", {
   id: serial("id").primaryKey(),
-  invoiceNumber: text("invoice_number").notNull().unique(), // INV-2024-001
-  orderId: integer("order_id").references(() => orders.id),
-  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
-  status: invoiceStatusEnum("status").default("pending"),
-  dueDate: timestamp("due_date").notNull(),
+  invoiceNumber: varchar("invoice_number", { length: 255 }).notNull(),
+  
+  orderId: integer("order_id").references(() => orders.id), 
+  
+  amount: varchar("amount", { length: 255 }).notNull(),
+  status: varchar("status", { length: 50 }).default('pending'),
+  dueDate: timestamp("due_date"),
   createdAt: timestamp("created_at").defaultNow(),
 });

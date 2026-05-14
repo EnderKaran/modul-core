@@ -101,6 +101,23 @@ createProcurement: publicProcedure
       .leftJoin(suppliers, eq(orders.supplierId, suppliers.id)) 
       .orderBy(desc(orders.createdAt));
   }),
+  getInvoices: publicProcedure.query(async () => {
+    return await db
+      .select({
+        id: invoices.id,
+        invoiceNumber: invoices.invoiceNumber,
+        orderNumber: orders.orderNumber,
+        supplierName: suppliers.name,
+        amount: invoices.amount,
+        status: invoices.status,
+        dueDate: invoices.dueDate,
+        createdAt: invoices.createdAt,
+      })
+      .from(invoices)
+      .leftJoin(orders, eq(invoices.orderId, orders.id))
+      .leftJoin(suppliers, eq(orders.supplierId, suppliers.id))
+      .orderBy(desc(invoices.createdAt));
+  }),
 });
 
 export type AppRouter = typeof appRouter;
