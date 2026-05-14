@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { procurementSchema, type ProcurementInput } from "@/lib/validations/procurement";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
-import { ChevronRight, ChevronLeft, X, CheckCircle2, AlertCircle } from "lucide-react";
+import { ChevronRight, ChevronLeft, X, AlertCircle } from "lucide-react";
 import { trpc } from '@/lib/trpc-client';
 import { useRouter } from 'next/navigation';
 
@@ -21,7 +21,8 @@ export default function ProcurementPage() {
   const router = useRouter();
   const utils = trpc.useUtils();
 
-  const form = useForm<ProcurementInput>({
+  // formState: { errors } ekleyerek hataları yakalıyoruz
+  const form = useForm<any>({
     resolver: zodResolver(procurementSchema),
     defaultValues: { 
       fiberType: "Carbon Fiber T700", 
@@ -30,9 +31,10 @@ export default function ProcurementPage() {
     }
   });
 
+  const { errors } = form.formState; // Hataları UI'da göstermek için
   const vendors = trpc.getVendors.useQuery();
   const selectedVendorId = form.watch("vendorId");
-  const formData = form.watch(); // Step 4 özet ekranı için verileri izliyoruz
+  const formData = form.watch();
 
   const mutation = trpc.createProcurement.useMutation({
     onSuccess: () => {
@@ -41,21 +43,35 @@ export default function ProcurementPage() {
       router.push('/');
     },
     onError: (err) => {
-      console.error("Submission failed:", err);
+      console.error("Mutation Hatası:", err);
     }
   });
 
+  // Hata logunu Next.js'i çökertmeyecek şekilde güvenli hale getirdik
   const onSubmit = (data: ProcurementInput) => {
     mutation.mutate(data);
   };
 
-  const nextStep = () => setCurrentStep((prev) => Math.min(prev + 1, 4));
+  // AKILLI İLERLEME: Sadece geçerli alanlar doldurulduysa sonraki adıma geç!
+  const nextStep = async () => {
+    let fieldsToValidate: (keyof ProcurementInput)[] = [];
+    
+    if (currentStep === 1) fieldsToValidate = ['fiberType', 'arealWeight'];
+    if (currentStep === 2) fieldsToValidate = ['quantity', 'leadTime'];
+    
+    const isStepValid = await form.trigger(fieldsToValidate);
+    
+    if (isStepValid) {
+      setCurrentStep((prev) => Math.min(prev + 1, 4));
+    }
+  };
+
   const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1));
 
   return (
     <div className="flex h-screen bg-slate-50">
       
-      {/* SOL PANEL: Request Flow */}
+      {/* SOL PANEL (Değişmedi) */}
       <div className="w-80 border-r border-slate-300 bg-white p-12 flex flex-col shadow-[1px_0_0_0_rgba(0,0,0,0.05)]">
         <div className="space-y-10 flex-1">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Request Flow</p>
@@ -79,10 +95,6 @@ export default function ProcurementPage() {
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Procurement ID</p>
             <p className="text-xs font-mono font-black text-white">PRQ-8820-TXT</p>
           </div>
-          <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Originator</p>
-            <p className="text-xs font-bold text-slate-200">System Administrator</p>
-          </div>
         </div>
       </div>
 
@@ -95,17 +107,20 @@ export default function ProcurementPage() {
             </div>
             <h1 className="text-xl font-black tracking-tightest text-slate-950 uppercase">MODUL-Ops</h1>
           </div>
-          <button 
-            onClick={() => router.push('/')}
-            className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 hover:text-red-600 transition-colors py-2 px-4 border border-transparent hover:border-red-100 hover:bg-red-50 rounded-sm"
-          >
+          <button onClick={() => router.push('/')} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 hover:text-red-600 transition-colors py-2 px-4 border border-transparent hover:border-red-100 hover:bg-red-50 rounded-sm">
             <X className="w-4 h-4" /> Save & Close
           </button>
         </header>
 
         <main className="flex-1 overflow-y-auto p-12 bg-slate-50">
           <div className="max-w-3xl mx-auto">
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
+            
+            {/* Güvenli Error Handler eklendi */}
+            <form onSubmit={form.handleSubmit(onSubmit, (err) => console.log("Form Hataları:", err))} className="space-y-10">
+              
+              {/* Gizli Input (valueAsNumber kaldırıldı, Zod halledecek) */}
+              <input type="hidden" {...form.register("vendorId")} />
+
               <AnimatePresence mode="wait">
                 <motion.div 
                   key={currentStep}
@@ -116,51 +131,51 @@ export default function ProcurementPage() {
                 >
                   <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-950" />
 
-                  {/* STEP 1: MATERIAL SPECS - Görünürlük Artırıldı */}
+                  {/* STEP 1: MATERIAL SPECS */}
                   {currentStep === 1 && (
                     <div className="space-y-12">
                       <div>
                         <h2 className="text-4xl font-black tracking-tightest mb-3 text-slate-950 uppercase">Material Specifications</h2>
-                        <p className="text-slate-600 text-base font-bold">Define precise technical parameters for the industrial raw material.</p>
                       </div>
                       <div className="grid grid-cols-2 gap-10">
                         <div className="space-y-3">
                           <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Fiber Type *</label>
-                          <input {...form.register("fiberType")} className="w-full h-14 border-2 border-slate-300 px-5 text-sm font-black focus:border-slate-950 bg-white text-slate-950" />
-                        </div>
-                        <div className="space-y-3">
-                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Thread Count</label>
-                          <input {...form.register("threadCount")} placeholder="e.g. 12 x 12" className="w-full h-14 border-2 border-slate-300 px-5 text-sm font-black focus:border-slate-950 bg-white text-slate-950" />
+                          {/* valueAs... kaldırıldı */}
+                          <input {...form.register("fiberType")} className={`w-full h-14 border-2 px-5 text-sm font-black bg-white text-slate-950 focus:outline-none ${errors.fiberType ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`} />
+                          {errors.fiberType && <p className="text-red-500 text-[10px] font-bold uppercase">{errors.fiberType.message?.toString()}</p>}
                         </div>
                         <div className="space-y-3 col-span-2">
                           <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Areal Weight (GSM) *</label>
                           <div className="flex">
-                            <input type="number" {...form.register("arealWeight", { valueAsNumber: true })} className="flex-1 h-14 border-2 border-slate-300 px-5 text-sm font-black focus:border-slate-950 text-slate-950" />
+                            <input type="number" {...form.register("arealWeight")} className={`flex-1 h-14 border-2 border-r-0 px-5 text-sm font-black text-slate-950 focus:outline-none ${errors.arealWeight ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`} />
                             <div className="w-20 h-14 bg-slate-950 border-2 border-l-0 border-slate-950 flex items-center justify-center text-[10px] font-black text-white uppercase tracking-widest">g/m²</div>
                           </div>
+                          {errors.arealWeight && <p className="text-red-500 text-[10px] font-bold uppercase">{errors.arealWeight.message?.toString()}</p>}
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* STEP 2: QUANTITY & LEAD TIME - Görünürlük Artırıldı */}
+                  {/* STEP 2: QUANTITY & LEAD TIME */}
                   {currentStep === 2 && (
                     <div className="space-y-12">
                       <div>
                         <h2 className="text-4xl font-black tracking-tightest mb-3 text-slate-950 uppercase">Quantity & Logistics</h2>
-                        <p className="text-slate-600 text-base font-bold">Specify the total volume and required delivery deadline.</p>
                       </div>
                       <div className="grid grid-cols-2 gap-10">
                         <div className="space-y-3">
                           <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Order Quantity *</label>
                           <div className="flex">
-                            <input type="number" {...form.register("quantity", { valueAsNumber: true })} className="flex-1 h-14 border-2 border-slate-300 px-5 text-sm font-black focus:border-slate-950 text-slate-950" />
+                            <input type="number" {...form.register("quantity")} className={`flex-1 h-14 border-2 border-r-0 px-5 text-sm font-black text-slate-950 focus:outline-none ${errors.quantity ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`} />
                             <div className="w-20 h-14 bg-slate-200 border-2 border-l-0 border-slate-300 flex items-center justify-center text-[10px] font-black text-slate-900 uppercase tracking-widest">Units</div>
                           </div>
+                          {errors.quantity && <p className="text-red-500 text-[10px] font-bold uppercase">{errors.quantity.message?.toString()}</p>}
                         </div>
                         <div className="space-y-3">
                           <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Delivery Date *</label>
-                          <input type="date" {...form.register("leadTime", { valueAsDate: true })} className="w-full h-14 border-2 border-slate-300 px-5 text-sm font-black focus:border-slate-950 bg-white text-slate-950" />
+                          <input type="date" {...form.register("leadTime")} className={`w-full h-14 border-2 px-5 text-sm font-black bg-white text-slate-950 focus:outline-none ${errors.leadTime ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`} />
+                          {/* Tarih hatası mesajı */}
+                          {errors.leadTime && <p className="text-red-500 text-[10px] font-bold uppercase">Please select a valid delivery date.</p>}
                         </div>
                       </div>
                     </div>
@@ -171,9 +186,8 @@ export default function ProcurementPage() {
                     <div className="space-y-10">
                       <div>
                         <h2 className="text-4xl font-black tracking-tightest mb-3 text-slate-950 uppercase">Vendor Selection</h2>
-                        <p className="text-slate-600 text-base font-bold">Select a verified supplier from your industrial network.</p>
                       </div>
-                      <div className="border-2 border-slate-300 rounded-sm overflow-hidden bg-white shadow-xl">
+                      <div className={`border-2 rounded-sm overflow-hidden bg-white shadow-xl ${errors.vendorId ? 'border-red-500' : 'border-slate-300'}`}>
                         <table className="w-full text-left border-collapse">
                           <thead>
                             <tr className="bg-slate-950 text-white">
@@ -184,10 +198,16 @@ export default function ProcurementPage() {
                           </thead>
                           <tbody className="divide-y-2 divide-slate-100">
                             {vendors.isLoading ? (
-                              <tr><td colSpan={3} className="p-10 text-center font-bold text-slate-400 uppercase tracking-widest">Loading Network...</td></tr>
+                              <tr><td colSpan={3} className="p-10 text-center font-bold text-slate-400">Loading...</td></tr>
                             ) : vendors.data?.map((vendor) => (
-                              <tr key={vendor.id} className={`group hover:bg-slate-50 cursor-pointer ${selectedVendorId === vendor.id ? 'bg-slate-50' : ''}`} onClick={() => form.setValue("vendorId", vendor.id)}>
-                                <td className="p-6 font-black text-slate-950 uppercase text-sm">{vendor.name}</td>
+                              // Seçimde form validasyonunu hemen tetiklemek için shouldValidate: true eklendi
+                              <tr key={vendor.id} className="group hover:bg-slate-50 cursor-pointer" onClick={() => form.setValue("vendorId", vendor.id, { shouldValidate: true })}>
+                                <td className="p-6 font-black text-slate-950 uppercase text-sm">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`w-2 h-2 rounded-full ${selectedVendorId === vendor.id ? 'bg-slate-950' : 'bg-transparent border border-slate-300'}`} />
+                                    {vendor.name}
+                                  </div>
+                                </td>
                                 <td className="p-6 text-xs font-bold text-slate-500 uppercase">{vendor.sector}</td>
                                 <td className="p-6 text-right">
                                   <button type="button" className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all ${selectedVendorId === vendor.id ? 'bg-slate-950 text-white border-slate-950' : 'border-slate-200 text-slate-400 group-hover:border-slate-950 group-hover:text-slate-950'}`}>
@@ -202,20 +222,19 @@ export default function ProcurementPage() {
                     </div>
                   )}
 
-                  {/* STEP 4: FINAL REVIEW - Entegre Edildi */}
+                  {/* STEP 4: FINAL REVIEW */}
                   {currentStep === 4 && (
                     <div className="space-y-12">
                       <div className="flex justify-between items-start">
                         <div>
                           <h2 className="text-4xl font-black tracking-tightest mb-3 text-slate-950 uppercase">Final Review</h2>
-                          <p className="text-slate-600 text-base font-bold text-red-600 uppercase tracking-tight">Authorization Required for PRQ-8820-TXT</p>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-1 border-2 border-slate-300 bg-slate-300">
                         <div className="bg-white p-8 space-y-4">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Material Specs</p>
-                          <p className="text-sm font-black text-slate-950 uppercase">{formData.fiberType} ({formData.arealWeight} GSM)</p>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Material</p>
+                          <p className="text-sm font-black text-slate-950 uppercase">{formData.fiberType}</p>
                         </div>
                         <div className="bg-white p-8 space-y-4">
                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Quantity</p>
@@ -227,44 +246,27 @@ export default function ProcurementPage() {
                         </div>
                         <div className="bg-white p-8 space-y-4">
                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vendor ID</p>
-                          <p className="text-sm font-black text-slate-950 uppercase">#{formData.vendorId || 'NA'}</p>
+                          <p className="text-sm font-black text-slate-950 uppercase">#{formData.vendorId}</p>
                         </div>
-                      </div>
-
-                      <div className="p-6 bg-slate-950 text-white flex gap-4 items-center">
-                        <AlertCircle className="w-5 h-5 text-red-500" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed">
-                          By confirming, you authorize MODUL-Ops to broadcast this requirement to the industrial supply chain network.
-                        </p>
                       </div>
                     </div>
                   )}
 
                   {/* NAVIGATION FOOTER */}
                   <div className="pt-12 border-t-2 border-slate-100 flex justify-between items-center">
-                    <button 
-                      type="button"
-                      onClick={prevStep}
-                      className={`flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-950 transition-colors ${currentStep === 1 ? 'invisible' : ''}`}
-                    >
+                    <button type="button" onClick={prevStep} className={`flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-950 transition-colors ${currentStep === 1 ? 'invisible' : ''}`}>
                       <ChevronLeft className="w-4 h-4" /> Back
                     </button>
                     
                     {currentStep < 4 ? (
-                      <button 
-                        type="button"
-                        onClick={nextStep}
-                        className="flex items-center gap-3 bg-slate-950 text-white px-10 py-5 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl active:scale-95"
-                      >
+                      // Type "button" kalmaya devam ediyor, formu sadece 4. adımda submit edeceğiz
+                      <button type="button" onClick={nextStep} className="flex items-center gap-3 bg-slate-950 text-white px-10 py-5 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl active:scale-95">
                         Next Step <ChevronRight className="w-5 h-5" />
                       </button>
                     ) : (
-                      <button 
-                        type="submit"
-                        disabled={mutation.isPending}
-                        className="flex items-center gap-3 bg-slate-950 text-white px-12 py-6 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-2xl disabled:opacity-50 active:scale-95"
-                      >
-                        {mutation.isPending ? "Syncing to Neon..." : "Authorize & Commit"}
+                      // Submit butonu sadece son adımda beliriyor
+                      <button type="submit" disabled={mutation.isPending} className="flex items-center gap-3 bg-slate-950 text-white px-12 py-6 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-2xl disabled:opacity-50 active:scale-95">
+                        {mutation.isPending ? "Processing..." : "Authorize & Commit"}
                       </button>
                     )}
                   </div>
@@ -275,5 +277,5 @@ export default function ProcurementPage() {
         </main>
       </div>
     </div>
-  ); 
+  );
 }
