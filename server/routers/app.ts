@@ -36,20 +36,23 @@ getLatestInvoices: publicProcedure.query(async () => {
     .limit(5);
 }),
 createProcurement: publicProcedure
-    .input(procurementSchema) // Zod ile gelen veriyi doğrula
+    .input(procurementSchema)
     .mutation(async ({ input }) => {
-      // 1. Siparişi 'orders' tablosuna ekle
+      // 1. Ana siparişi oluştur
       const [newOrder] = await db.insert(orders).values({
-        orderNumber: `PRQ-${Math.floor(1000 + Math.random() * 9000)}`,
-        status: "approved", // Dinamik olması için onaylı başlıyoruz
-        totalAmount: (input.quantity * 150).toString(), // Örnek fiyatlandırma
+        orderNumber: `MOD-${Math.floor(1000 + Math.random() * 9000)}`,
+        supplierId: input.vendorId,
+        status: "approved",
+        totalAmount: (input.quantity * 125.50).toString(), 
       }).returning();
 
+     
       return newOrder;
     }),
     getVendors: publicProcedure.query(async () => {
     return await db.select().from(suppliers).orderBy(suppliers.name);
   }),
+  
 });
 
 export type AppRouter = typeof appRouter;

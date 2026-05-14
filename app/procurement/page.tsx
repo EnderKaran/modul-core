@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { procurementSchema, type ProcurementInput } from "@/lib/validations/procurement";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
-import { ChevronRight, ChevronLeft, X, CheckCircle2 } from "lucide-react";
+import { ChevronRight, ChevronLeft, X, CheckCircle2, AlertCircle } from "lucide-react";
 import { trpc } from '@/lib/trpc-client';
 import { useRouter } from 'next/navigation';
 
@@ -19,9 +19,8 @@ const steps = [
 export default function ProcurementPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const router = useRouter();
-  const utils = trpc.useUtils(); // Query invalidation için gerekli
+  const utils = trpc.useUtils();
 
-  // 1. FORM SETUP
   const form = useForm<ProcurementInput>({
     resolver: zodResolver(procurementSchema),
     defaultValues: { 
@@ -33,14 +32,12 @@ export default function ProcurementPage() {
 
   const vendors = trpc.getVendors.useQuery();
   const selectedVendorId = form.watch("vendorId");
+  const formData = form.watch(); // Step 4 özet ekranı için verileri izliyoruz
 
-  // 2. TRPC MUTATION (Buraya Yapıştırıldı)
   const mutation = trpc.createProcurement.useMutation({
     onSuccess: () => {
-      // Dashboard verilerini tazelemek için query'leri geçersiz kılıyoruz
       utils.getDashboardStats.invalidate();
       utils.getLatestInvoices.invalidate();
-      // Başarı durumunda ana sayfaya yönlendir
       router.push('/');
     },
     onError: (err) => {
@@ -48,7 +45,6 @@ export default function ProcurementPage() {
     }
   });
 
-  // 3. SUBMIT HANDLER
   const onSubmit = (data: ProcurementInput) => {
     mutation.mutate(data);
   };
@@ -93,7 +89,7 @@ export default function ProcurementPage() {
       {/* SAĞ PANEL: Form Alanı */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-20 border-b border-slate-300 bg-white px-10 flex items-center justify-between shadow-sm z-10">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 cursor-pointer" onClick={() => router.push('/')}>
             <div className="w-10 h-10 bg-slate-950 rounded-sm flex items-center justify-center text-white shadow-lg">
               <span className="font-black text-lg">M</span>
             </div>
@@ -110,7 +106,6 @@ export default function ProcurementPage() {
         <main className="flex-1 overflow-y-auto p-12 bg-slate-50">
           <div className="max-w-3xl mx-auto">
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
-              
               <AnimatePresence mode="wait">
                 <motion.div 
                   key={currentStep}
@@ -121,26 +116,26 @@ export default function ProcurementPage() {
                 >
                   <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-950" />
 
-                  {/* STEP 1: MATERIAL SPECS */}
+                  {/* STEP 1: MATERIAL SPECS - Görünürlük Artırıldı */}
                   {currentStep === 1 && (
                     <div className="space-y-12">
                       <div>
                         <h2 className="text-4xl font-black tracking-tightest mb-3 text-slate-950 uppercase">Material Specifications</h2>
-                        <p className="text-slate-600 text-base font-medium">Define technical parameters for the required raw material.</p>
+                        <p className="text-slate-600 text-base font-bold">Define precise technical parameters for the industrial raw material.</p>
                       </div>
                       <div className="grid grid-cols-2 gap-10">
                         <div className="space-y-3">
-                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Fiber Type *</label>
-                          <input {...form.register("fiberType")} className="w-full h-14 border-2 border-slate-200 px-5 text-sm font-bold focus:border-slate-950 bg-white" />
+                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Fiber Type *</label>
+                          <input {...form.register("fiberType")} className="w-full h-14 border-2 border-slate-300 px-5 text-sm font-black focus:border-slate-950 bg-white text-slate-950" />
                         </div>
                         <div className="space-y-3">
-                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Thread Count</label>
-                          <input {...form.register("threadCount")} placeholder="e.g. 12 x 12" className="w-full h-14 border-2 border-slate-200 px-5 text-sm font-bold focus:border-slate-950 bg-white" />
+                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Thread Count</label>
+                          <input {...form.register("threadCount")} placeholder="e.g. 12 x 12" className="w-full h-14 border-2 border-slate-300 px-5 text-sm font-black focus:border-slate-950 bg-white text-slate-950" />
                         </div>
                         <div className="space-y-3 col-span-2">
-                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Areal Weight (GSM) *</label>
+                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Areal Weight (GSM) *</label>
                           <div className="flex">
-                            <input type="number" {...form.register("arealWeight", { valueAsNumber: true })} className="flex-1 h-14 border-2 border-slate-200 px-5 text-sm font-bold focus:border-slate-950" />
+                            <input type="number" {...form.register("arealWeight", { valueAsNumber: true })} className="flex-1 h-14 border-2 border-slate-300 px-5 text-sm font-black focus:border-slate-950 text-slate-950" />
                             <div className="w-20 h-14 bg-slate-950 border-2 border-l-0 border-slate-950 flex items-center justify-center text-[10px] font-black text-white uppercase tracking-widest">g/m²</div>
                           </div>
                         </div>
@@ -148,101 +143,102 @@ export default function ProcurementPage() {
                     </div>
                   )}
 
-                  {/* STEP 2: QUANTITY & LEAD TIME */}
+                  {/* STEP 2: QUANTITY & LEAD TIME - Görünürlük Artırıldı */}
                   {currentStep === 2 && (
                     <div className="space-y-12">
                       <div>
-                        <h2 className="text-4xl font-black tracking-tightest mb-3 text-slate-950 uppercase">Quantity & Lead Time</h2>
-                        <p className="text-slate-600 text-base font-medium">Specify required volume and delivery deadline.</p>
+                        <h2 className="text-4xl font-black tracking-tightest mb-3 text-slate-950 uppercase">Quantity & Logistics</h2>
+                        <p className="text-slate-600 text-base font-bold">Specify the total volume and required delivery deadline.</p>
                       </div>
                       <div className="grid grid-cols-2 gap-10">
                         <div className="space-y-3">
-                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Order Quantity *</label>
+                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Order Quantity *</label>
                           <div className="flex">
-                            <input type="number" {...form.register("quantity", { valueAsNumber: true })} className="flex-1 h-14 border-2 border-slate-200 px-5 text-sm font-bold focus:border-slate-950" />
-                            <div className="w-20 h-14 bg-slate-100 border-2 border-l-0 border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase tracking-widest">Units</div>
+                            <input type="number" {...form.register("quantity", { valueAsNumber: true })} className="flex-1 h-14 border-2 border-slate-300 px-5 text-sm font-black focus:border-slate-950 text-slate-950" />
+                            <div className="w-20 h-14 bg-slate-200 border-2 border-l-0 border-slate-300 flex items-center justify-center text-[10px] font-black text-slate-900 uppercase tracking-widest">Units</div>
                           </div>
                         </div>
                         <div className="space-y-3">
-                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Delivery Date *</label>
-                          <input type="date" {...form.register("leadTime", { valueAsDate: true })} className="w-full h-14 border-2 border-slate-200 px-5 text-sm font-bold focus:border-slate-950 bg-white" />
+                          <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Delivery Date *</label>
+                          <input type="date" {...form.register("leadTime", { valueAsDate: true })} className="w-full h-14 border-2 border-slate-300 px-5 text-sm font-black focus:border-slate-950 bg-white text-slate-950" />
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* STEP 3 & 4 (Placeholder Logic) */}
+                  {/* STEP 3: VENDOR SELECTION */}
                   {currentStep === 3 && (
-  <motion.div 
-    key="step3"
-    initial={{ opacity: 0, x: 20 }}
-    animate={{ opacity: 1, x: 0 }}
-    className="space-y-10"
-  >
-    <div>
-      <h2 className="text-4xl font-black tracking-tightest mb-3 text-slate-950 uppercase">Vendor Selection</h2>
-      <p className="text-slate-600 text-base font-medium">Select a certified supplier from your approved industrial network.</p>
-    </div>
+                    <div className="space-y-10">
+                      <div>
+                        <h2 className="text-4xl font-black tracking-tightest mb-3 text-slate-950 uppercase">Vendor Selection</h2>
+                        <p className="text-slate-600 text-base font-bold">Select a verified supplier from your industrial network.</p>
+                      </div>
+                      <div className="border-2 border-slate-300 rounded-sm overflow-hidden bg-white shadow-xl">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="bg-slate-950 text-white">
+                              <th className="p-5 text-[11px] font-black uppercase tracking-[0.2em]">Supplier</th>
+                              <th className="p-5 text-[11px] font-black uppercase tracking-[0.2em]">Sector</th>
+                              <th className="p-5 text-[11px] font-black uppercase tracking-[0.2em] text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y-2 divide-slate-100">
+                            {vendors.isLoading ? (
+                              <tr><td colSpan={3} className="p-10 text-center font-bold text-slate-400 uppercase tracking-widest">Loading Network...</td></tr>
+                            ) : vendors.data?.map((vendor) => (
+                              <tr key={vendor.id} className={`group hover:bg-slate-50 cursor-pointer ${selectedVendorId === vendor.id ? 'bg-slate-50' : ''}`} onClick={() => form.setValue("vendorId", vendor.id)}>
+                                <td className="p-6 font-black text-slate-950 uppercase text-sm">{vendor.name}</td>
+                                <td className="p-6 text-xs font-bold text-slate-500 uppercase">{vendor.sector}</td>
+                                <td className="p-6 text-right">
+                                  <button type="button" className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all ${selectedVendorId === vendor.id ? 'bg-slate-950 text-white border-slate-950' : 'border-slate-200 text-slate-400 group-hover:border-slate-950 group-hover:text-slate-950'}`}>
+                                    {selectedVendorId === vendor.id ? 'Selected' : 'Select'}
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
 
-    {/* Vendor Selection Table */}
-    <div className="border-2 border-slate-300 rounded-sm overflow-hidden bg-white shadow-xl">
-      <table className="w-full text-left border-collapse">
-        <thead>
-          <tr className="bg-slate-950 text-white">
-            <th className="p-5 text-[11px] font-black uppercase tracking-[0.2em]">Supplier Name</th>
-            <th className="p-5 text-[11px] font-black uppercase tracking-[0.2em]">Sector</th>
-            <th className="p-5 text-[11px] font-black uppercase tracking-[0.2em]">Location</th>
-            <th className="p-5 text-[11px] font-black uppercase tracking-[0.2em] text-right">Action</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y-2 divide-slate-100">
-          {vendors.isLoading ? (
-            <tr><td colSpan={4} className="p-10 text-center font-bold text-slate-400">Fetching verified vendors...</td></tr>
-          ) : vendors.data?.map((vendor) => (
-            <tr 
-              key={vendor.id} 
-              className={`group hover:bg-slate-50 transition-colors cursor-pointer ${selectedVendorId === vendor.id ? 'bg-slate-50' : ''}`}
-              onClick={() => form.setValue("vendorId", vendor.id)}
-            >
-              <td className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${selectedVendorId === vendor.id ? 'bg-slate-950' : 'bg-transparent border border-slate-300'}`} />
-                  <span className="text-sm font-black text-slate-950 uppercase">{vendor.name}</span>
-                </div>
-              </td>
-              <td className="p-6 text-xs font-bold text-slate-600 uppercase tracking-tight">{vendor.sector}</td>
-              <td className="p-6 text-xs font-bold text-slate-600 uppercase tracking-tight">{vendor.location}</td>
-              <td className="p-6 text-right">
-                <button 
-                  type="button"
-                  className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest border-2 transition-all ${
-                    selectedVendorId === vendor.id 
-                    ? 'bg-slate-950 text-white border-slate-950' 
-                    : 'bg-white text-slate-400 border-slate-200 group-hover:border-slate-950 group-hover:text-slate-950'
-                  }`}
-                >
-                  {selectedVendorId === vendor.id ? 'Selected' : 'Select'}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+                  {/* STEP 4: FINAL REVIEW - Entegre Edildi */}
+                  {currentStep === 4 && (
+                    <div className="space-y-12">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h2 className="text-4xl font-black tracking-tightest mb-3 text-slate-950 uppercase">Final Review</h2>
+                          <p className="text-slate-600 text-base font-bold text-red-600 uppercase tracking-tight">Authorization Required for PRQ-8820-TXT</p>
+                        </div>
+                      </div>
 
-    {/* Navigation */}
-    <div className="pt-12 border-t-2 border-slate-100 flex justify-between items-center">
-      <button onClick={() => setCurrentStep(2)} className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-slate-950 transition-colors">Back to Logistics</button>
-      <button 
-        disabled={!selectedVendorId}
-        onClick={() => setCurrentStep(4)}
-        className="flex items-center gap-3 bg-slate-950 text-white px-10 py-5 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-lg disabled:opacity-30 disabled:cursor-not-allowed"
-      >
-        Final Review <ChevronRight className="w-5 h-5" />
-      </button>
-    </div>
-  </motion.div>
-)}
+                      <div className="grid grid-cols-2 gap-1 border-2 border-slate-300 bg-slate-300">
+                        <div className="bg-white p-8 space-y-4">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Material Specs</p>
+                          <p className="text-sm font-black text-slate-950 uppercase">{formData.fiberType} ({formData.arealWeight} GSM)</p>
+                        </div>
+                        <div className="bg-white p-8 space-y-4">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Quantity</p>
+                          <p className="text-sm font-black text-slate-950 uppercase">{formData.quantity} Units</p>
+                        </div>
+                        <div className="bg-white p-8 space-y-4">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Target Date</p>
+                          <p className="text-sm font-black text-slate-950 uppercase">{formData.leadTime ? new Date(formData.leadTime).toLocaleDateString() : 'Not Set'}</p>
+                        </div>
+                        <div className="bg-white p-8 space-y-4">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vendor ID</p>
+                          <p className="text-sm font-black text-slate-950 uppercase">#{formData.vendorId || 'NA'}</p>
+                        </div>
+                      </div>
+
+                      <div className="p-6 bg-slate-950 text-white flex gap-4 items-center">
+                        <AlertCircle className="w-5 h-5 text-red-500" />
+                        <p className="text-[10px] font-bold uppercase tracking-widest leading-relaxed">
+                          By confirming, you authorize MODUL-Ops to broadcast this requirement to the industrial supply chain network.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* NAVIGATION FOOTER */}
                   <div className="pt-12 border-t-2 border-slate-100 flex justify-between items-center">
@@ -258,7 +254,7 @@ export default function ProcurementPage() {
                       <button 
                         type="button"
                         onClick={nextStep}
-                        className="flex items-center gap-3 bg-slate-950 text-white px-10 py-5 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl"
+                        className="flex items-center gap-3 bg-slate-950 text-white px-10 py-5 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl active:scale-95"
                       >
                         Next Step <ChevronRight className="w-5 h-5" />
                       </button>
@@ -266,9 +262,9 @@ export default function ProcurementPage() {
                       <button 
                         type="submit"
                         disabled={mutation.isPending}
-                        className="flex items-center gap-3 bg-slate-950 text-white px-12 py-6 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-2xl disabled:opacity-50"
+                        className="flex items-center gap-3 bg-slate-950 text-white px-12 py-6 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-2xl disabled:opacity-50 active:scale-95"
                       >
-                        {mutation.isPending ? "Processing..." : "Confirm & Push to Dashboard"}
+                        {mutation.isPending ? "Syncing to Neon..." : "Authorize & Commit"}
                       </button>
                     )}
                   </div>
@@ -279,5 +275,5 @@ export default function ProcurementPage() {
         </main>
       </div>
     </div>
-  );
+  ); 
 }
