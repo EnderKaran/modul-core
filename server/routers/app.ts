@@ -2,7 +2,7 @@ import { router, publicProcedure } from '../trpc';
 import { db } from '@/db';
 import { products, orders, suppliers, invoices } from "@/db/schema";
 import { procurementSchema } from "@/lib/validations/procurement";
-import { count, eq, sql } from 'drizzle-orm';
+import { count, eq, sql , desc } from 'drizzle-orm';
 import * as Ably from 'ably';
 import z from 'zod';
 
@@ -87,6 +87,20 @@ createProcurement: publicProcedure
       });
       return { success: true };
     }),
+    getOrders: publicProcedure.query(async () => {
+    return await db
+      .select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        status: orders.status,
+        totalAmount: orders.totalAmount,
+        createdAt: orders.createdAt,
+        supplierName: suppliers.name, 
+      })
+      .from(orders)
+      .leftJoin(suppliers, eq(orders.supplierId, suppliers.id)) 
+      .orderBy(desc(orders.createdAt));
+  }),
 });
 
 export type AppRouter = typeof appRouter;
