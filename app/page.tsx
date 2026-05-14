@@ -4,17 +4,45 @@ import { trpc } from '@/lib/trpc-client';
 import { StatsCard } from '@/components/dashboard/stats-card';
 import { StockVelocity } from '@/components/dashboard/stock-velocity';
 import { InvoicesTable } from '@/components/dashboard/invoices-table';
-import { Package, Truck, AlertTriangle, Info, Zap } from "lucide-react";
-import { motion } from "framer-motion";
+// YENİ EKLENENLER: Activity ikonu, AnimatePresence ve useState eklendi.
+import { Package, Truck, AlertTriangle, Info, Zap, Activity } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { useChannel } from 'ably/react';
 
 export default function Home() {
+  const utils = trpc.useUtils(); // Arka planda verileri yenilemek için gerekli
+  
   // tRPC ile veri çekme
   const stats = trpc.getDashboardStats.useQuery();
   const velocity = trpc.getStockVelocity.useQuery();
   const invoices = trpc.getLatestInvoices.useQuery();
 
+  // YENİ: Canlı bildirimleri (Toast) tutacağımız state
+  const [notification, setNotification] = useState<{title: string, message: string} | null>(null);
+
+  // YENİ: ABLY DİNLEYİCİSİ (SUBSCRIBER)
+  // 'modul-network' kanalını dinler, sipariş gelince verileri yeniler ve uyarı gösterir.
+  useChannel('modul-network', (message) => {
+    if (message.name === 'order-created') {
+      // 1. Neon DB'den verileri arka planda sessizce tekrar çek
+      utils.getDashboardStats.invalidate();
+      utils.getLatestInvoices.invalidate();
+      utils.getStockVelocity.invalidate();
+
+      // 2. Ekranda endüstriyel bir uyarı göster
+      setNotification({
+        title: "Telemetry Sync",
+        message: `Procurement ${message.data?.orderNumber || 'Authorized'} successfully broadcasted.`
+      });
+
+      // 4 saniye sonra bildirimi kapat
+      setTimeout(() => setNotification(null), 4000);
+    }
+  });
+
   return (
-    <div className="max-w-7xl mx-auto space-y-12 pb-12">
+    <div className="max-w-7xl mx-auto space-y-12 pb-12 relative">
       
       {/* 1. Başlık Bölümü - Daha belirgin ve tok */}
       <motion.div 
@@ -125,6 +153,26 @@ export default function Home() {
         </div>
         <InvoicesTable data={invoices.data ?? []} />
       </div>
+
+      {/* YENİ: CANLI BİLDİRİM (TOAST) SİSTEMİ */}
+      <AnimatePresence>
+        {notification && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-10 right-10 bg-slate-950 text-white p-6 shadow-2xl border-l-4 border-emerald-500 z-50 flex gap-4 items-center w-96 rounded-sm"
+          >
+            <div className="w-10 h-10 bg-emerald-500/20 flex items-center justify-center rounded-sm">
+              <Activity className="w-5 h-5 text-emerald-400 animate-pulse" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400 mb-1">{notification.title}</p>
+              <p className="text-xs font-medium text-slate-300 leading-relaxed">{notification.message}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

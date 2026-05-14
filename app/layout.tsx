@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TRPCProvider } from "@/components/providers/trpc-provider";
+import { TelemetryProvider } from "@/components/providers/ably-provider";
 import { Sidebar } from "@/components/sidebar";
 
 const geistSans = Geist({
@@ -31,11 +32,12 @@ export default function RootLayout({
     >
       <body className="h-full bg-white text-slate-950">
         <TRPCProvider>
-          {/* Ana Flex Konteynırı */}
-          <div className="flex h-screen overflow-hidden">
-            
-            {/* Sol Panel: Sabit Sidebar */}
-            <Sidebar />
+          <TelemetryProvider>
+            {/* Ana Flex Konteynırı */}
+            <div className="flex h-screen overflow-hidden">
+              
+              {/* Sol Panel: Sabit Sidebar */}
+              <Sidebar />
 
             {/* Sağ Panel: Üst Bar ve Ana İçerik */}
             <div className="flex flex-col flex-1 min-w-0 overflow-hidden bg-slate-50">
@@ -60,6 +62,7 @@ export default function RootLayout({
             </div>
             
           </div>
+          </TelemetryProvider>
         </TRPCProvider>
       </body>
     </html>
