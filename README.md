@@ -1,4 +1,4 @@
-```markdown
+
 # MODUL - Industrial Supply Chain Portal
 
 A high-fidelity B2B procurement and inventory management system designed for enterprise-scale manufacturing operations. MODUL centralizes supply chain intelligence, providing real-time telemetry, spatial facility mapping, and financial ledger tracking.
@@ -77,5 +77,3 @@ The application will be available at `http://localhost:3000`.
 ## License
 
 Copyright (c) 2026. All rights reserved.
-
-```
