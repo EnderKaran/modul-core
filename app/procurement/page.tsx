@@ -38,12 +38,11 @@ export default function ProcurementPage() {
   });
 
   const { errors } = form.formState; 
-  const vendors = trpc.getVendors.useQuery();
   const selectedVendorId = form.watch("vendorId");
   const formData = form.watch();
 
   // Eğer veritabanından veri gelmezse mock verileri kullan
-  const displayVendors = (vendors.data && vendors.data.length > 0) ? vendors.data : mockVendors;
+  const displayVendors = mockVendors;
 
   const mutation = trpc.createProcurement.useMutation({
     onSuccess: () => {

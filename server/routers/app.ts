@@ -3,12 +3,16 @@ import { db } from '@/db';
 import { invoices, orders, suppliers } from '@/db/schema';
 import { procurementSchema } from "@/lib/validations/procurement";
 import { count, eq, sql } from 'drizzle-orm';
+import * as Ably from 'ably';
+
+const ably = new Ably.Rest({ key: process.env.ABLY_API_KEY });
 
 export const appRouter = router({
   getDashboardStats: publicProcedure.query(async () => {
     const activeOrders = await db.select({ value: count() }).from(orders).where(eq(orders.status, 'approved'));
     const pendingShipments = await db.select({ value: count() }).from(orders).where(eq(orders.status, 'pending'));
     const delayedFreight = await db.select({ value: count() }).from(orders).where(eq(orders.status, 'delayed'));
+    
 
     return {
       activeOrders: activeOrders[0].value,
@@ -38,21 +42,24 @@ getLatestInvoices: publicProcedure.query(async () => {
 createProcurement: publicProcedure
     .input(procurementSchema)
     .mutation(async ({ input }) => {
-      // 1. Ana siparişi oluştur
+      // 1. Neon DB'ye kaydet (Mevcut kodun)
       const [newOrder] = await db.insert(orders).values({
         orderNumber: `MOD-${Math.floor(1000 + Math.random() * 9000)}`,
         supplierId: input.vendorId,
         status: "approved",
-        totalAmount: (input.quantity * 125.50).toString(), 
+        totalAmount: (input.quantity * 125.50).toString(),
       }).returning();
 
-     
+      // 2. ABLY TELEMETRİ SİNYALİ GÖNDER (YENİ)
+      const channel = ably.channels.get('modul-network');
+      await channel.publish('order-created', {
+        id: newOrder.id,
+        orderNumber: newOrder.orderNumber,
+        message: "New industrial procurement authorized."
+      });
+
       return newOrder;
     }),
-    getVendors: publicProcedure.query(async () => {
-    return await db.select().from(suppliers).orderBy(suppliers.name);
-  }),
-  
 });
 
 export type AppRouter = typeof appRouter;
