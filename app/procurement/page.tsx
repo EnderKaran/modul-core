@@ -16,12 +16,18 @@ const steps = [
   { id: '04', name: 'Review & Submit' },
 ];
 
+// Veritabanı boşsa gösterilecek örnek tedarikçiler
+const mockVendors = [
+  { id: 101, name: "Kordsa Teknik Tekstil", sector: "Advanced Materials", location: "Istanbul, TR" },
+  { id: 102, name: "BOSCH Sanayi", sector: "Automotive Components", location: "Bursa, TR" },
+  { id: 103, name: "Gestamp Auto", sector: "Chassis & Body", location: "Kocaeli, TR" }
+];
+
 export default function ProcurementPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const router = useRouter();
   const utils = trpc.useUtils();
 
-  // formState: { errors } ekleyerek hataları yakalıyoruz
   const form = useForm<any>({
     resolver: zodResolver(procurementSchema),
     defaultValues: { 
@@ -31,10 +37,13 @@ export default function ProcurementPage() {
     }
   });
 
-  const { errors } = form.formState; // Hataları UI'da göstermek için
+  const { errors } = form.formState; 
   const vendors = trpc.getVendors.useQuery();
   const selectedVendorId = form.watch("vendorId");
   const formData = form.watch();
+
+  // Eğer veritabanından veri gelmezse mock verileri kullan
+  const displayVendors = (vendors.data && vendors.data.length > 0) ? vendors.data : mockVendors;
 
   const mutation = trpc.createProcurement.useMutation({
     onSuccess: () => {
@@ -47,17 +56,16 @@ export default function ProcurementPage() {
     }
   });
 
-  // Hata logunu Next.js'i çökertmeyecek şekilde güvenli hale getirdik
   const onSubmit = (data: ProcurementInput) => {
     mutation.mutate(data);
   };
 
-  // AKILLI İLERLEME: Sadece geçerli alanlar doldurulduysa sonraki adıma geç!
   const nextStep = async () => {
     let fieldsToValidate: (keyof ProcurementInput)[] = [];
     
     if (currentStep === 1) fieldsToValidate = ['fiberType', 'arealWeight'];
     if (currentStep === 2) fieldsToValidate = ['quantity', 'leadTime'];
+    if (currentStep === 3) fieldsToValidate = ['vendorId']; 
     
     const isStepValid = await form.trigger(fieldsToValidate);
     
@@ -71,7 +79,7 @@ export default function ProcurementPage() {
   return (
     <div className="flex h-screen bg-slate-50">
       
-      {/* SOL PANEL (Değişmedi) */}
+      {/* SOL PANEL */}
       <div className="w-80 border-r border-slate-300 bg-white p-12 flex flex-col shadow-[1px_0_0_0_rgba(0,0,0,0.05)]">
         <div className="space-y-10 flex-1">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Request Flow</p>
@@ -115,11 +123,9 @@ export default function ProcurementPage() {
         <main className="flex-1 overflow-y-auto p-12 bg-slate-50">
           <div className="max-w-3xl mx-auto">
             
-            {/* Güvenli Error Handler eklendi */}
-            <form onSubmit={form.handleSubmit(onSubmit, (err) => console.log("Form Hataları:", err))} className="space-y-10">
+            <form onSubmit={form.handleSubmit(onSubmit, (err) => console.error("Kayıt Engellendi. Hatalar:", err))} className="space-y-10">
               
-              {/* Gizli Input (valueAsNumber kaldırıldı, Zod halledecek) */}
-              <input type="hidden" {...form.register("vendorId")} />
+              <input type="hidden" {...form.register("vendorId", { valueAsNumber: true })} />
 
               <AnimatePresence mode="wait">
                 <motion.div 
@@ -140,17 +146,14 @@ export default function ProcurementPage() {
                       <div className="grid grid-cols-2 gap-10">
                         <div className="space-y-3">
                           <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Fiber Type *</label>
-                          {/* valueAs... kaldırıldı */}
                           <input {...form.register("fiberType")} className={`w-full h-14 border-2 px-5 text-sm font-black bg-white text-slate-950 focus:outline-none ${errors.fiberType ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`} />
-                          {errors.fiberType && <p className="text-red-500 text-[10px] font-bold uppercase">{errors.fiberType.message?.toString()}</p>}
                         </div>
                         <div className="space-y-3 col-span-2">
                           <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Areal Weight (GSM) *</label>
                           <div className="flex">
-                            <input type="number" {...form.register("arealWeight")} className={`flex-1 h-14 border-2 border-r-0 px-5 text-sm font-black text-slate-950 focus:outline-none ${errors.arealWeight ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`} />
+                            <input type="number" {...form.register("arealWeight", { valueAsNumber: true })} className={`flex-1 h-14 border-2 border-r-0 px-5 text-sm font-black text-slate-950 focus:outline-none ${errors.arealWeight ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`} />
                             <div className="w-20 h-14 bg-slate-950 border-2 border-l-0 border-slate-950 flex items-center justify-center text-[10px] font-black text-white uppercase tracking-widest">g/m²</div>
                           </div>
-                          {errors.arealWeight && <p className="text-red-500 text-[10px] font-bold uppercase">{errors.arealWeight.message?.toString()}</p>}
                         </div>
                       </div>
                     </div>
@@ -166,16 +169,13 @@ export default function ProcurementPage() {
                         <div className="space-y-3">
                           <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Order Quantity *</label>
                           <div className="flex">
-                            <input type="number" {...form.register("quantity")} className={`flex-1 h-14 border-2 border-r-0 px-5 text-sm font-black text-slate-950 focus:outline-none ${errors.quantity ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`} />
+                            <input type="number" {...form.register("quantity", { valueAsNumber: true })} className={`flex-1 h-14 border-2 border-r-0 px-5 text-sm font-black text-slate-950 focus:outline-none ${errors.quantity ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`} />
                             <div className="w-20 h-14 bg-slate-200 border-2 border-l-0 border-slate-300 flex items-center justify-center text-[10px] font-black text-slate-900 uppercase tracking-widest">Units</div>
                           </div>
-                          {errors.quantity && <p className="text-red-500 text-[10px] font-bold uppercase">{errors.quantity.message?.toString()}</p>}
                         </div>
                         <div className="space-y-3">
                           <label className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Delivery Date *</label>
-                          <input type="date" {...form.register("leadTime")} className={`w-full h-14 border-2 px-5 text-sm font-black bg-white text-slate-950 focus:outline-none ${errors.leadTime ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`} />
-                          {/* Tarih hatası mesajı */}
-                          {errors.leadTime && <p className="text-red-500 text-[10px] font-bold uppercase">Please select a valid delivery date.</p>}
+                          <input type="date" {...form.register("leadTime", { valueAsDate: true })} className={`w-full h-14 border-2 px-5 text-sm font-black bg-white text-slate-950 focus:outline-none ${errors.leadTime ? 'border-red-500' : 'border-slate-300 focus:border-slate-950'}`} />
                         </div>
                       </div>
                     </div>
@@ -197,10 +197,8 @@ export default function ProcurementPage() {
                             </tr>
                           </thead>
                           <tbody className="divide-y-2 divide-slate-100">
-                            {vendors.isLoading ? (
-                              <tr><td colSpan={3} className="p-10 text-center font-bold text-slate-400">Loading...</td></tr>
-                            ) : vendors.data?.map((vendor) => (
-                              // Seçimde form validasyonunu hemen tetiklemek için shouldValidate: true eklendi
+                            {/* displayVendors kullanılıyor */}
+                            {displayVendors.map((vendor: any) => (
                               <tr key={vendor.id} className="group hover:bg-slate-50 cursor-pointer" onClick={() => form.setValue("vendorId", vendor.id, { shouldValidate: true })}>
                                 <td className="p-6 font-black text-slate-950 uppercase text-sm">
                                   <div className="flex items-center gap-3">
@@ -219,6 +217,7 @@ export default function ProcurementPage() {
                           </tbody>
                         </table>
                       </div>
+                      {errors.vendorId && <p className="text-red-500 text-[10px] font-bold uppercase">{errors.vendorId.message?.toString()}</p>}
                     </div>
                   )}
 
@@ -259,12 +258,10 @@ export default function ProcurementPage() {
                     </button>
                     
                     {currentStep < 4 ? (
-                      // Type "button" kalmaya devam ediyor, formu sadece 4. adımda submit edeceğiz
                       <button type="button" onClick={nextStep} className="flex items-center gap-3 bg-slate-950 text-white px-10 py-5 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl active:scale-95">
                         Next Step <ChevronRight className="w-5 h-5" />
                       </button>
                     ) : (
-                      // Submit butonu sadece son adımda beliriyor
                       <button type="submit" disabled={mutation.isPending} className="flex items-center gap-3 bg-slate-950 text-white px-12 py-6 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-2xl disabled:opacity-50 active:scale-95">
                         {mutation.isPending ? "Processing..." : "Authorize & Commit"}
                       </button>
