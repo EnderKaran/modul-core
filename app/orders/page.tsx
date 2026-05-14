@@ -1,21 +1,64 @@
 'use client';
 
 import { trpc } from '@/lib/trpc-client';
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Search, Filter, FileText, Clock, CheckCircle2, Truck, XCircle } from "lucide-react";
 import { useState } from 'react';
 
 export default function OrdersPage() {
   const ordersQuery = trpc.getOrders.useQuery();
+  
+  // State Yönetimi
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  // Arama filtresi (Sipariş Numarası veya Tedarikçi İsmine göre)
-  const filteredOrders = ordersQuery.data?.filter((order: any) => 
-    order.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    order.supplierName?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Veritabanındaki mevcut statüleri dinamik olarak bul
+  const statuses = Array.from(new Set(ordersQuery.data?.map((order: any) => order.status?.toLowerCase()).filter(Boolean)));
 
-  // Sipariş durumuna göre rozet (badge) render eden yardımcı fonksiyon
+  // ARAMA VE FİLTRELEME MANTIĞI
+  const filteredOrders = ordersQuery.data?.filter((order: any) => {
+    const matchesSearch = 
+      order.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      order.supplierName?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = selectedStatus ? order.status?.toLowerCase() === selectedStatus : true;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  // CSV EXPORT (RAPOR İNDİRME) FONKSİYONU
+  const exportToCSV = () => {
+    if (!filteredOrders || filteredOrders.length === 0) {
+      alert("No data to export.");
+      return;
+    }
+
+    // CSV Başlıkları
+    const headers = ["Order Ref", "Supplier", "Date Issued", "Total Value (USD)", "Status"];
+    
+    // Satır verilerini formatla
+    const csvRows = filteredOrders.map((order: any) => {
+      const date = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US') : 'N/A';
+      // Excel virgülleri sütun ayracı sanmasın diye metinleri tırnak içine alıyoruz
+      return `"${order.orderNumber}","${order.supplierName || 'Unknown'}","${date}","${order.totalAmount || 0}","${order.status}"`;
+    });
+
+    // Başlık ve satırları birleştir
+    const csvContent = [headers.join(","), ...csvRows].join("\n");
+    
+    // İndirme işlemini tetikle
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `MODUL_Orders_Report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Sipariş durumuna göre rozet render eden yardımcı fonksiyon
   const renderStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'approved':
@@ -55,19 +98,49 @@ export default function OrdersPage() {
       {/* BAŞLIK VE KONTROLLER */}
       <div className="flex justify-between items-end">
         <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
           className="space-y-2"
         >
           <h2 className="text-4xl font-black tracking-tightest text-slate-950 uppercase">Order Control</h2>
           <p className="text-slate-600 text-base font-bold">Centralized procurement and fulfillment tracking.</p>
         </motion.div>
 
-        <div className="flex gap-4">
-          <button className="flex items-center gap-2 px-6 py-4 bg-white border-2 border-slate-300 text-[11px] font-black uppercase tracking-[0.2em] text-slate-600 hover:text-slate-950 hover:border-slate-950 transition-all shadow-sm">
-            <Filter className="w-4 h-4" /> Filter Status
-          </button>
-          <button className="flex items-center gap-2 px-6 py-4 bg-slate-950 text-white text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl active:scale-95">
+        <div className="flex gap-4 relative">
+          
+          {/* FİLTRE BUTONU VE AÇILIR MENÜSÜ */}
+          <div>
+            <button 
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className={`flex items-center gap-2 px-6 py-4 border-2 text-[11px] font-black uppercase tracking-[0.2em] transition-all shadow-sm ${selectedStatus ? 'bg-slate-950 text-white border-slate-950' : 'bg-white border-slate-300 text-slate-600 hover:text-slate-950 hover:border-slate-950'}`}
+            >
+              <Filter className="w-4 h-4" /> 
+              {selectedStatus || "Filter Status"}
+            </button>
+
+            <AnimatePresence>
+              {isFilterOpen && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+                  className="absolute top-full left-0 mt-2 w-48 bg-white border-2 border-slate-950 shadow-2xl z-20 flex flex-col"
+                >
+                  <button onClick={() => { setSelectedStatus(null); setIsFilterOpen(false); }} className="px-4 py-3 text-left text-xs font-black uppercase tracking-widest hover:bg-slate-100 border-b-2 border-slate-100 text-slate-500">
+                    All Statuses
+                  </button>
+                  {statuses.map((status: any) => (
+                    <button key={status} onClick={() => { setSelectedStatus(status); setIsFilterOpen(false); }} className="px-4 py-3 text-left text-xs font-black uppercase tracking-widest hover:bg-slate-100 text-slate-950">
+                      {status}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* EXPORT BUTONU */}
+          <button 
+            onClick={exportToCSV}
+            className="flex items-center gap-2 px-6 py-4 bg-slate-950 text-white text-[11px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all shadow-xl active:scale-95"
+          >
             <FileText className="w-4 h-4" /> Export Report
           </button>
         </div>
@@ -89,14 +162,9 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* SİPARİŞ TABLOSU */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }} 
-        animate={{ opacity: 1, y: 0 }} 
-        className="bg-white border-2 border-slate-300 rounded-sm shadow-2xl overflow-hidden relative"
-      >
+      {/* SİPARİŞ TABLOSU (Aynı Kaldı) */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white border-2 border-slate-300 rounded-sm shadow-2xl overflow-hidden relative">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-slate-950" />
-        
         <table className="w-full text-left border-collapse mt-1">
           <thead>
             <tr className="bg-slate-50 border-b-2 border-slate-300">
@@ -110,38 +178,22 @@ export default function OrdersPage() {
           </thead>
           <tbody className="divide-y-2 divide-slate-100">
             {ordersQuery.isLoading ? (
-              <tr>
-                <td colSpan={6} className="p-12 text-center text-xs font-black uppercase tracking-widest text-slate-400">
-                  Syncing Order Network...
-                </td>
-              </tr>
+              <tr><td colSpan={6} className="p-12 text-center text-xs font-black uppercase tracking-widest text-slate-400">Syncing Order Network...</td></tr>
             ) : filteredOrders?.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="p-12 text-center text-xs font-black uppercase tracking-widest text-slate-400">
-                  No orders found.
-                </td>
-              </tr>
+              <tr><td colSpan={6} className="p-12 text-center text-xs font-black uppercase tracking-widest text-slate-400">No orders found.</td></tr>
             ) : filteredOrders?.map((order: any) => (
               <tr key={order.id} className="group hover:bg-slate-50 transition-colors">
                 <td className="p-6">
-                  <span className="text-sm font-mono font-black text-slate-950 bg-slate-100 px-2 py-1 rounded-sm border border-slate-200">
-                    {order.orderNumber}
-                  </span>
+                  <span className="text-sm font-mono font-black text-slate-950 bg-slate-100 px-2 py-1 rounded-sm border border-slate-200">{order.orderNumber}</span>
                 </td>
-                <td className="p-6 font-black text-slate-900 uppercase tracking-tight text-sm">
-                  {order.supplierName || 'Unknown Vendor'}
-                </td>
+                <td className="p-6 font-black text-slate-900 uppercase tracking-tight text-sm">{order.supplierName || 'Unknown Vendor'}</td>
                 <td className="p-6 text-xs font-bold text-slate-500 uppercase tracking-widest">
                   {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
                 </td>
                 <td className="p-6 text-right">
-                  <span className="text-sm font-black text-slate-950">
-                    ${Number(order.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </span>
+                  <span className="text-sm font-black text-slate-950">${Number(order.totalAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                 </td>
-                <td className="p-6 text-center">
-                  {renderStatusBadge(order.status)}
-                </td>
+                <td className="p-6 text-center">{renderStatusBadge(order.status)}</td>
                 <td className="p-6 text-right">
                   <button className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 border-2 border-transparent group-hover:border-slate-300 group-hover:text-slate-950 hover:!border-slate-950 transition-all">
                     View Docs
