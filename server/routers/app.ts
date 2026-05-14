@@ -1,6 +1,6 @@
 import { router, publicProcedure } from '../trpc';
 import { db } from '@/db';
-import { invoices, orders, suppliers } from '@/db/schema';
+import { products, orders, suppliers, invoices } from "@/db/schema";
 import { procurementSchema } from "@/lib/validations/procurement";
 import { count, eq, sql } from 'drizzle-orm';
 import * as Ably from 'ably';
@@ -33,6 +33,10 @@ export const appRouter = router({
     { month: 'Sep', velocity: 89000 },
   ];
 }),
+ggetInventory: publicProcedure.query(async () => {
+    // products tablosundaki tüm verileri isme göre sıralayarak getirir
+    return await db.select().from(products).orderBy(products.name);
+  }),
 getLatestInvoices: publicProcedure.query(async () => {
   return await db.select()
     .from(invoices)

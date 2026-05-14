@@ -6,7 +6,8 @@ import {
   integer, 
   decimal, 
   jsonb, 
-  pgEnum 
+  pgEnum, 
+  varchar
 } from "drizzle-orm/pg-core";
 
 // Sipariş durumları için endüstriyel tip tanımları
@@ -31,21 +32,16 @@ export const suppliers = pgTable("suppliers", {
 
 // 2. ÜRÜNLER / PARÇALAR (Products)
 export const products = pgTable("products", {
-  id: serial("id").primaryKey(),
-  sku: text("sku").notNull().unique(), // Parça kodu
-  name: text("name").notNull(),
-  supplierId: integer("supplier_id").references(() => suppliers.id),
-  // JSONB kullanımı: Tekstilde iplik türü, otomotivde teknik çizim verisi tutabiliriz
-  specifications: jsonb("specifications").$type<{
-    material?: string;
-    gsm?: number;
-    threadCount?: string;
-    weight?: string;
-    dimensions?: string;
-  }>(),
-  currentStock: integer("current_stock").default(0),
-  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }),
-  updatedAt: timestamp("updated_at").defaultNow(),
+ id: serial("id").primaryKey(),
+  sku: varchar("sku", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  
+  // YENİ EKLENEN ENDÜSTRİYEL SÜTUNLAR
+  category: varchar("category", { length: 255 }),
+  stock: integer("stock").notNull().default(0),
+  unit: varchar("unit", { length: 50 }).default('UN'),
+  safetyStock: integer("safety_stock").notNull().default(0),
+  location: varchar("location", { length: 255 }),
 });
 
 // 3. SATINALMA EMİRLERİ (Orders)
